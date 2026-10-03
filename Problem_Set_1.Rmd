@@ -1,0 +1,457 @@
+---
+title: "Problem_Set_1"
+output: html_document
+date: "2026-09-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Problem 1: Why does the sample variance divide by n-1?
+
+For (a), 
+1. I'll have to first write(create) a function that accepts a vector of numbers and calculate all three numbers.
+   (*the three numbers: variance dividing n, variance dividing n-1, standard deviation)
+2. Try it on 10 observations to check if it works.
+```{r}
+
+three_estimates <- function(x) {
+  n <- length(x) # Number of observations
+  squared_sum <- sum((x - mean (x))^2) # Sum of squared distances from the sample mean.
+  
+  variance_n <- squared_sum / n # Divide by n
+  variance_n_minus_1 <- var(x) # R divides by n-1
+  standard_deviation <- sd(x) # Square root of variance_n_minus_1
+  
+  c(variance_n = variance_n, # create a vector for each respectively
+    variance_n_minus_1 = variance_n_minus_1,
+    standard_deviation = standard_deviation)
+}
+
+# Generate one sample of 10 observations and check the function.
+set.seed(123) # makes random draws reproducible
+x <- rnorm(10, mean = 0, sd = 2)
+x # See the 10 observations
+three_estimates(x) # See the three estimates
+
+```
+
+Answer:
+By running the sample of 10 observations, I obtained 3.274934 for variance divided by n, 3.638816 for variance divided by n-1, and lastly, 1.907568 for standard deviation.
+===========================================================================================================
+
+For (b), 
+1. I'll use the function from (b) on 1,000 new samples, with 5 observations in each sample.
+2. Store the results in a data frame with one row per sample.
+3. Find the each estimator's mean.
+4. Plot the two variance estimator: variance diving by n, variance dividing by n-1 (on the same axes) - marking the true variance and each estimator's mean.
+4. See which estimator is biased, which direction?
+```{r}
+
+three_estimates <- function(x) {
+  n <- length(x) # Number of observations
+  squared_sum <- sum((x - mean (x))^2) # Sum of squared distances from the sample mean.
+  
+  variance_n <- squared_sum / n # Divide by n
+  variance_n_minus_1 <- var(x) # R divides by n-1
+  standard_deviation <- sd(x) # Square root of variance_n_minus_1
+  
+  c(variance_n = variance_n, # create a vector for each respectively
+    variance_n_minus_1 = variance_n_minus_1,
+    standard_deviation = standard_deviation)
+}
+
+# Generate the samples and store the results
+set.seed(123) # makes random draws reproducible
+results <- t(replicate(1000, three_estimates(rnorm(5, mean = 0, sd = 2)))) # Generate the 1,000 sample
+results <- as.data.frame(results) # Store the results
+head(results)
+# Each row of "results" represents one sample of five observations.
+# The columns are the three estimates (variance dividing n, variance dividing n-1, standard deviation).
+
+
+# Find the average of each variance estimator
+mean_n <- mean(results$variance_n)
+mean_n_minus_1 <- mean(results$variance_n_minus_1)
+
+mean_n
+mean_n_minus_1
+# Compare both averages with the true variance 4.
+# An average below 4 indicates downward bias.
+
+
+# Plot the two variance estimator (variance dividing n, variance dividing n-1) - true variance + each estimator's mean.
+hist(results$variance_n,
+     breaks = 30, col = rgb(0, 0, 1, 0.4), # group the estimates into 30 bars and color the bars (red, green, blue)
+     xlim = range(results[, 1:2]), # set the horizontal axis to cover the values in the first two columns of results.
+     main = "Variance estimates from 1,000 samples (n = 5)", # Set the title for the plot
+     xlab = "Estimated variance") # Label the horizontal axis as "Estimated variance".
+
+hist(results$variance_n_minus_1,
+     breaks = 30, col = rgb(1, 0.5, 0, 0.4),
+     add = TRUE) # place this histogram on the existing plot
+
+abline(v = 4, col = "black", lwd = 2) # adding vertical lines to the existing plot.
+abline(v = mean_n, col = "blue", lwd = 2, lty =2) ## lwd: making the line thicker, lty: making it dashed.
+abline(v = mean_n_minus_1, col = "darkorange", lwd = 2, lty = 2)
+
+legend("topright", #legend: add a key to the plot in the top-right corner of the plot.
+       legend = c("True variance", "Mean: divide by n", "Mean: divide by n-1"), 
+       col = c("black", "blue", "darkorange"),
+       lty = c(1, 2, 2), lwd = 2)
+       
+```
+Answer: 
+The divide-by-n estimator is biased downwards, in a sense that its mean is below the true variance of 4.
+The divide-by-n-1 estimator's mean in approximately 4, so it is not biased.
+
+==========================================================================================================
+
+For (c), 
+1. repeat (b) with samples of 3, 5, 10, 30, and 100 observations.
+2. calculate the estimated biases for the two variance (variance dividing by n, variance dividing by n-1).
+3. put the estimated biases results in a table.
+4. Plot the estimated bias
+(*Estimated Bias: mean of the 1,000 variance estimates - 4).
+```{r}
+
+three_estimates <- function(x) {
+  n <- length(x) # Number of observations
+  squared_sum <- sum((x - mean (x))^2) # Sum of squared distances from the sample mean.
+  
+  variance_n <- squared_sum / n # Divide by n
+  variance_n_minus_1 <- var(x) # R divides by n-1
+  standard_deviation <- sd(x) # Square root of variance_n_minus_1
+  
+  c(variance_n = variance_n, # create a vector for each respectively
+    variance_n_minus_1 = variance_n_minus_1,
+    standard_deviation = standard_deviation)
+}
+
+
+sample_sizes <- c(3, 5, 10, 30, 100)
+
+# Calculate the two estimated biases (each estimator's mean - true variance) for one sample size.
+bias_for_size <- function(n) {
+  estimates <- t(replicate(1000, three_estimates(rnorm(n, mean = 0, sd = 2))))
+  
+  c(bias_n = mean (estimates[, "variance_n"]) - 4,
+    bias_n_minus_1 = mean (estimates[, "variance_n_minus_1"]) - 4)
+}
+
+set.seed(456)
+biases <- t(sapply(sample_sizes, bias_for_size)) # apply "bias_for_size" to each element of "sample_sizes", and return vectors.
+
+# Put the results in a table with one row per sample size.
+bias_results <- data.frame(sample_size = sample_sizes, biases)
+bias_results
+
+
+# Plot the two columns of estimated bias.
+plot(bias_results$sample_size, # horizontal axis
+     bias_results$bias_n, # vertical axis
+     type = "b", col = "blue", pch = 16, # b: both: draw both points and lines connecting them. # pch = 16: a filled circle
+     ylim = range(bias_results[, 2:3], 0),
+     ylab = "Estimated bias",
+     xlab = "Sample size",
+     main = "Bias of the two variance estimators")
+
+lines(bias_results$sample_size, # horizontal axis
+      bias_results$bias_n_minus_1, # vertical axis
+      type = "b", col = "darkorange", pch = 17) # pch = 17: a filled triangle.
+
+abline(h = 0, lty = 2)
+
+legend("bottomright",
+       legend = c("Divide by n", "Divide by n-1"),
+       col = c("blue", "darkorange"),
+       lty = 1, pch = c(16, 17))
+
+
+```
+====================================================================================================================
+
+Question (d) asks if the sample standard deviation(s) gets the population standard deviation right.
+(*Population Standard Deviation = 2)
+
+For (d),
+1. sample size 3, 5, 10, 30, 100
+2. calculate sample standard deviation(s),and the estimated bias for one.
+3. Apply that to the five sample sizes (3, 5, 10, 30, 100)
+(*Estimated bias of sample standard deviation = mean of 1000 sample standard deviation - 2)
+```{r}
+
+sample_sizes <- c(3, 5, 10, 30, 100)
+set.seed(789)
+
+# For one sample size n, estimate the bias of sample standard deviation.
+calculate_sd_bias <- function(n) {
+  estimates <- replicate(1000, sd(rnorm(n, mean = 0, sd = 2))
+                         )
+  mean(estimates) - 2
+}
+
+# Apply that calculation to each of the five sample sizes.
+sd_biases <- sapply(sample_sizes, calculate_sd_bias)
+
+# Display one row per sample size.
+sd_bias_results <- data.frame(sample_size = sample_sizes, estimated_bias = sd_biases)
+sd_bias_results
+
+```
+Answer: 
+No, the sample standard deviation is not an unbiased estimator of population standard deviation indicating 2.
+To elaborate, the negative biases indicate that the sample standard deviation underestimates the population standard deviation on average.
+As the sample size increases, the estimated bias becomes smaller and approaches zero.
+
+===================================================================================================
+
+For (e),
+1. use the 1,000 samples of size 5, indicated as "results" from Question (b).
+2. create standard deviations for the two variances (variance dividing by n, variance dividing by n-1).
+```{r}
+
+three_estimates <- function(x) {
+  n <- length(x) # Number of observations
+  squared_sum <- sum((x - mean (x))^2) # Sum of squared distances from the sample mean.
+  
+  variance_n <- squared_sum / n # Divide by n
+  variance_n_minus_1 <- var(x) # R divides by n-1
+  standard_deviation <- sd(x) # Square root of variance_n_minus_1
+  
+  c(variance_n = variance_n, # create a vector for each respectively
+    variance_n_minus_1 = variance_n_minus_1,
+    standard_deviation = standard_deviation)
+}
+
+# Use the 1,000 samples of size 5 already stored in "results" from Question (b).
+# Just in case, you have deleted the data and need to start from initial stage, I have written down the code again below.
+# Generate the samples and store the results
+set.seed(123) # makes random draws reproducible
+results <- t(replicate(1000, three_estimates(rnorm(5, mean = 0, sd = 2)))) # Generate the 1,000 sample
+results <- as.data.frame(results) # Store the results
+head(results)
+# Each row of "results" represents one sample of five observations.
+# The columns are the three estimates (variance dividing n, variance dividing n-1, standard deviation).
+
+
+# How much each variance estimator varies across the 1,000 samples.
+sd_n <- sd(results$variance_n)
+sd_n_minus_1 <- sd(results$variance_n_minus_1)
+
+sd_n
+sd_n_minus_1
+
+```
+Answer: 
+At n = 5, the standard deviation of the 1,000 variance estimate is 2.270301 for the estimator divided by n, and 2.837876 for the estimator divided by n-1. Thus, the estimator divided by n is less variable.
+
+=========================================================================================================================================
+=========================================================================================================================================
+
+Problem 2: Omitted Variable Bias
+: Does news consumption appear to have a bigger effect on political knowledge when we forget to account for political interest?
+: If we leave an important variable out of a regression, will our estimate of the effect of news consumption be wrong - and can more data fix that?
+
+
+Question (a), 
+1. create a data with 100 observations
+```{r}
+
+set.seed(123) # Make the random draw reproducible.
+n <- 100 # Number of observations
+rho <- 0.5 # Population correlation between x and z.
+
+# Generate three independent sets of random values.
+z <- rnorm(n, mean = 0, sd = 1) # Political interest
+u <- rnorm(n, mean = 0, sd = 1) # Random variation in news consumption
+epsilon <- rnorm(n, mean = 0, sd = 1) # Random variation in political knowledge
+
+# Calculate new consumption and political knowledge
+x <- rho * z + sqrt(1 - rho^2) * u #sqrt: square root 
+y <- 1 + 2 * x + 3 * z + epsilon
+
+# Store the data: one row per person
+data_100 <- data.frame(x = x, y = y, z = z)
+head(data_100) # Display the first six rows
+
+
+# x and z should have means near 0 and standard deviations near 1
+sapply(data_100[c("x", "z")], mean)
+sapply(data_100[c("x", "z")], sd)
+
+# Their sample correlation should be near 0.5
+cor(data_100$x, data_100$z)
+
+```
+
+==============================================================================================================
+
+Question (b),
+1. use the data "data_100" created at Question (a).
+2. create two models based on the equations (y ~ x, y ~ x + z)
+3. create a plot y against x
+```{r}
+
+# use "data_100" from Question (a)
+set.seed(123) # Make the random draw reproducible.
+n <- 100 # Number of observations
+rho <- 0.5 # Population correlation between x and z.
+
+z <- rnorm(n, mean = 0, sd = 1) # Political interest
+u <- rnorm(n, mean = 0, sd = 1) # Random variation in news consumption
+epsilon <- rnorm(n, mean = 0, sd = 1) # Random variation in political knowledge
+
+x <- rho * z + sqrt(1 - rho^2) * u #sqrt: square root 
+y <- 1 + 2 * x + 3 * z + epsilon
+
+data_100 <- data.frame(x = x, y = y, z = z)
+head(data_100) # Display the first six rows
+
+
+# Model that leaves out political interest: y ~ x
+model_omit <- lm(y ~ x, data = data_100)
+summary(model_omit)
+
+# Model that includes political interest: y ~ x + z
+model_full <- lm(y ~ x + z, data = data_100)
+summary(model_full)
+
+# Create a plot y against x
+plot(data_100$x, data_100$y,
+     pch = 16, col = "gray",
+     xlab = "News consumption (x)",
+     ylab = "Political knowledge (y)",
+     main = "News consumption and Political knowledge")
+
+```
+Answer:
+Based on the analysis, the scatterplot showed a positive relationship between news consumption and political knowledge.
+The first model excluding political interest estimated the coefficient on news consumption as 3.2671, substantially above the true effect of 2.In the second model including political interest, it reduced the estimate to 2.0275, which is close to the true value of 2.
+This illustrates upward omitted variable bias: the model overstates news consumption effect because it also pick up some of political interest's effect on political knowledge.
+
+*Omitted variable bias: leaving an important variable out of a regression distorts the estimated effect of another variable.
+
+============================================================================================================
+
+Question (c),
+1. create a dataset with 1000 observations
+2. create two models based on the two equations (y ~ x, y ~ x + z)
+3. create a plot y against x
+```{r}
+
+set.seed(456)
+n <- 1000
+rho <- 0.5
+
+# Generate three independent sets of random values
+z <- rnorm(n, mean = 0, sd = 1)
+u <- rnorm(n, mean = 0, sd = 1)
+epsilon <- rnorm(n, mean = 0, sd = 2)
+
+# Calculate new consumption and political knowledge
+x <- rho * z + sqrt(1 - rho^2) * u
+y <- 1 + 2 * x + 3 * z + epsilon
+
+# Store the 1000 data: one row per person
+data_1000 <- data.frame(x = x, y = y, z = z)
+head(data_1000)
+
+# Check the generated variables
+sapply(data_1000[c("x", "z")], mean)
+sapply(data_1000[c("x", "z")], sd)
+cor(data_1000$x, data_1000$z)
+
+# Create models
+# Create a model that leaves out political interest
+model_omit_1000 <- lm(y ~ x, data = data_1000)
+summary(model_omit_1000)
+# Create a model that includes political interest
+model_full_1000 <- lm(y ~ x + z, data = data_1000)
+summary(model_full_1000)
+
+# Plot y (political knowledge) against x(news consumption)
+plot(data_1000$x, data_1000$y,
+     pch = 16, col = "gray",
+     xlab = "News consumption (x)",
+     ylab = "Political knowledge (y)",
+     main = "News consumption and Political knowledge: 1000 observations")
+
+```
+
+Answer:
+Explicitly speaking, the larger data did not solve the bias.
+Based on the analysis, the scatterplot conducted under 1000 observations showed a positive relationship between news consumption and political knowledge. In terms of coefficient estimates, the first model excluding political knowledge indicated 3.5237, and the second model including the political knowledge indicated 2.06970, which seemed closer to the true value of 2. Overall, despite the presence of larger data, it still illustrated the upward omitted bias.
+
+============================================================================================================
+
+Question (d),
+1. create a dataset with 1000 observations with "rho = 0".
+2. create two models based on two equations (y ~ x, y ~ x + z).
+3. plot y against x
+```{r}
+
+set.seed(789)
+n <- 1000
+rho <- 0
+
+# Generate independent random values
+z <- rnorm(n, mean = 0, sd = 1)
+u <- rnorm(n, mean = 0, sd = 1)
+epsilon <- rnorm(n, mean = 0, sd = 1)
+
+# Generate News consumption and Political knowledge
+x =  rho * z + sqrt(1 - rho^2) * u
+y = 1 + 2 * x + 3 * z + epsilon
+
+# Check the data 1000 observations with "rho = 0"
+data_1000_rho0 <- data.frame(x = x, y = y, z = z)
+head(data_1000_rho0)
+
+# Check the generated variables
+sapply(data_1000_rho0[c("x", "z")], mean)
+sapply(data_1000_rho0[c("x", "z")], sd)
+cor(data_1000_rho0$x, data_1000_rho0$z)
+
+# Create two models
+# Create a model leaving out political interest (z)
+model_omit_rho0 <- lm(y ~ x, data = data_1000_rho0)
+summary(model_omit_rho0)
+# Create a model including political interest
+model_full_rho0 <- lm(y ~ x + z, data = data_1000_rho0)
+summary(model_full_rho0)
+
+# Plot y against x
+plot(data_1000_rho0$x, data_1000_rho0$y,
+     pch = 16, col = "gray",
+     xlab = "News consumption (x)",
+     ylab = "Political knowledge (y)",
+     main = "News consumption and Political knowledge: 1000 observations with rho being 0")
+
+```
+Answer:
+When rho equals to zero, the estimated coefficient of the first model excluding the political knowledge is 2.0028, and those of the second model including the political knowledge is 1.9781. Both seem to be close to the true value of 2. Because political knowledge is independent of news consumption, omitting it does not systematically bias the news coefficient.In addition to that, including political interest improved precision: the standard error of the news coefficient falls from 0.1041 to 0.0320.
+Overall, these findings seems to suggest that regression models should use theory to identify confounders - variables that affect the outcome and are related to the explanatory variable. Variables unrelated to the explanatory variable may still improve precision when they explain the outcome.
+
+==============================================================================================================
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
