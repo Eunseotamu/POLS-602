@@ -1,0 +1,495 @@
+---
+title: "Problemset_2"
+output: html_document
+date: "2026-10-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+# Problem Set 2 : Probability and Uncertainty
+
+# Problem 1: Simulation
+```{r}
+
+# Make the simulation reproducible
+set.seed(123)
+
+# Sample size
+n <- 1000
+
+# Generate the confounder
+Zi <- rnorm(n, mean = 0, sd = 1)
+
+# Generate treatment, which depends on the confounder
+Xi <- 0.5 * Zi + rnorm(n, mean = 0, sd = 1)
+
+# Generate the outcome
+Yi <- 2 + 3 * Xi + 1.5 * Zi + rnorm(n, mean = 0, sd = 1)
+
+# Create the dataset
+simulation_data <- data.frame(Yi, Xi, Zi)
+
+# Fit the true model and print the summary
+model_true <- lm(Yi ~ Xi + Zi, data = simulation_data)
+summary(model_true)
+
+```
+
+# 1-(a) 
+# demonstrate that the coefficient for your treatment variable follows the central limit theorem.
+# demonstrate that the coefficient's sampling distribution is approximately normal.
+# if we repeatedly drew new samples and estimated the treatment effect, what would the estimates look like?
+```{r}
+
+## Set up the simulation
+set.seed(123)
+
+n <- 1000
+simulations <- 5000
+
+## Create a vector containing 5000 zeros.
+beta_Xi <- numeric(simulations)
+
+## Starts a loop = repeat the data generation and estimation
+for (s in seq_len(simulations)) {
+  
+  # Generate a new dataset in each simulation
+  Zi <- rnorm(n, mean = 0, sd = 1)
+  Xi <- 0.5 * Zi + rnorm(n, mean = 0, sd = 1)
+  Yi <- 2 + 3 * Xi + 1.5 * Zi + rnorm(n, mean = 0, sd = 1)
+  
+  # Fit the correctly specified model = Estimate the true model in each sample
+  model <- lm(Yi ~ Xi + Zi)
+  
+  # Save the estimated coefficient on Xi = Save the treatment coefficient
+  beta_Xi[s] <- coef(model)["Xi"]
+}
+
+#Summarize the sampling distribution
+mean(beta_Xi)
+sd(beta_Xi)
+
+## Display two plots side by side (historgram on the left & Q-Q plot on the right)
+# divide the plotting area into one row and two columns
+par(mfrow = c (1, 2))
+
+# Histogram with a fitted normal density
+hist(beta_Xi,
+     breaks = 40,
+     probability = TRUE,
+     main = "Sampling Distribution of the Xi Coefficient",
+     xlab = "Estimated coefficient on Xi",
+     col = "lightblue",
+     border = "white")
+
+# Add a normal curve for comparison
+curve(dnorm(x, mean(beta_Xi), sd = sd(beta_Xi)),
+     add = TRUE,
+     col = "red",
+     lwd = 2)
+     
+
+# Mark the true treatment effect
+abline(v = 3, col = "darkgreen", lwd = 2, lty = 2) #lwd: twice the default thickness, #lty = 2: specifies a dashed line
+
+
+
+# Additional Check: Normal Q-Q plot
+qqnorm(beta_Xi, main = "Normal Q-Q Plot") #qqnorm: draw the comparison points
+qqline(beta_Xi, col = "red", lwd = 2) #qqline: adds a reference line
+# If the estimates are approximately normally distributed, the points lie roughly along the red line.
+
+
+```
+
+===============================================================================================================
+
+
+
+
+# 1-(b) 
+# using one dataset, estimate how much the treatment coefficient would vary across samples by using the bootstrap.
+## a smaller standard error = more precise estimate.
+# using one dataset and repeatedly resample its observation.
+
+```{r}
+
+# Make the simulation reproducible
+set.seed(123)
+
+# Sample size
+n <- 1000
+
+# Generate the confounder
+Zi <- rnorm(n, mean = 0, sd = 1)
+
+# Generate treatment, which depends on the confounder
+Xi <- 0.5 * Zi + rnorm(n, mean = 0, sd = 1)
+
+# Generate the outcome
+Yi <- 2 + 3 * Xi + 1.5 * Zi + rnorm(n, mean = 0, sd = 1)
+
+# Create the dataset
+simulation_data <- data.frame(Yi, Xi, Zi)
+
+
+set.seed(456)
+
+## Number of bootstrap repetitions
+B <- 5000
+
+## Number of observations in the original dataset
+n <- nrow(simulation_data)
+
+## Storage for the bootstrap treatment coefficients
+boot_beta_Xi <- numeric(B)
+
+for (b in seq_len(B)) {
+  
+  # Randomly select n row numbers with replacement
+  sampled_rows <- sample(seq_len(n), size = n, replace = TRUE)
+
+  # Create a bootstrap dataset using those rows
+  boot_data <- simulation_data[sampled_rows, ]
+  
+  # Estimate the same model using the bootstrap dataset
+  boot_model <- lm(Yi ~ Xi + Zi, data = boot_data)
+  
+  # Save the estimated treatment coefficient
+  boot_beta_Xi[b] <- coef(boot_model) ["Xi"]
+}
+
+## Bootstrapped standard error
+bootstrap_se <- sd(boot_beta_Xi)
+bootstrap_se
+
+```
+# Answer: the bootstrapped standard error for the coefficient of the treatment variable is 0.030.
+
+===============================================================================================================
+
+
+
+
+# 1-(c) 
+# fit a model that omits the confounding variable (Zi)
+# repeat the (a) with the new model omitting confounding variable and create the plot
+# compare the correct model and omitted variable model
+```{r}
+
+set.seed(123)
+
+n <- 1000
+simulations <- 5000
+
+## Store treatment estimates from both models
+beta_correct <- numeric(simulations)
+beta_omitted <- numeric(simulations)
+
+for (s in seq_len(simulations)) {
+  
+  # Generate data using the true model
+  Zi <- rnorm(n, mean = 0, sd = 1)
+  Xi <- 0.5 * Zi + rnorm(n, mean = 0, sd = 1)
+  Yi <- 2 + 3 * Xi + 1.5 * Zi + rnorm(n, mean = 0, sd =1)
+  
+  # Correct model: includes the confounder
+  model_correct <- lm(Yi ~ Xi + Zi)
+  # New model: omits the confounder
+  model_omitted <- lm (Yi ~ Xi)
+  
+  # Save the treatment coefficients
+  beta_correct[s] <- coef(model_correct)["Xi"]
+  beta_omitted[s] <- coef(model_omitted)["Xi"]
+}
+
+## Compare the centers, standard deviations, and biases
+data.frame(
+  Model = c("Includes Zi", "Omits Zi"),
+  Mean = c(mean(beta_correct), mean(beta_omitted)),
+  SD = c(sd(beta_correct), sd(beta_omitted)),
+  Bias = c(mean(beta_correct) - 3, mean(beta_omitted) - 3)
+)
+
+## Set a common horizontal axis for comparison
+plot_limits <- range(c(beta_correct, beta_omitted, 3))
+
+## Display two plots side by side
+par(mfrow = c(1, 2))
+
+
+## Left plot: Correct model's sampling distribution = histogram of correct model
+hist(beta_correct,
+     breaks = 40,
+     probability = TRUE,
+     xlim = plot_limits,
+     main = "Model Including Zi",
+     xlab = "Estimated coefficient on Xi",
+     col = "lightblue",
+     border = "white")
+
+curve(dnorm(x,
+            mean = mean(beta_correct),
+            sd = sd(beta_correct)),
+      add = TRUE, col = "red", lwd = 2)
+
+abline(v = 3, col = "darkgreen", lwd = 2, lty = 2)
+
+
+## Right plot: Omitted-confounder model's sampling distribution = histogram of omitted model
+hist(beta_omitted,
+     breaks = 40,
+     probability = TRUE,
+     xlim = plot_limits,
+     main = "Model Omitting Zi",
+     xlab = "Estimated coefficient on Xi",
+     col = "lightpink",
+     border = "white")
+
+curve(dnorm(x,
+            mean = mean(beta_omitted),
+            sd = sd(beta_omitted)),
+      add = TRUE, col = "red", lwd = 2)
+
+abline(v = 3, col = "darkgreen", lwd = 2, lty = 2)
+
+
+```
+# Answer: Both sampling distributions are approximately normal, however omitting the confounder shifts the center from the true effect of 3 to 3.6, presenting that normality does not ensure valid statistical tests of the causal treatment effect.
+
+==============================================================================================================
+
+
+
+
+# Problem 2: Data Analysis
+
+# 2-(a)
+# conduct a hypothesis test for a difference in means. 
+# decide what are the hypotheses are, whether to use a t-test or a z-test and the level of significance
+# compare the average outcome of two groups & assess whether the observed difference = a difference in population means
+# Average outcome of treatment group - Average outcome of control group
+
+
+# Do students who receive tutoring have different average scores from students who do not?
+```{r}
+
+# Enter the hypothetical exam scores
+tutoring <- c(78, 85, 88, 90, 76, 84, 92, 81, 87, 89)
+no_tutoring <- c(72, 75, 80, 77, 69, 74, 82, 78, 73, 76)
+
+# Calculate group means
+mean(tutoring)
+mean(no_tutoring)
+
+# Calculate the difference: tutoring - no tutoring
+mean(tutoring) - mean(no_tutoring)
+
+# Conduct a two-sided Welch independent-samples t-test
+test_result <- t.test(
+  x = tutoring,
+  y = no_tutoring,
+  alternative = "two.sided",
+  mu = 0, # specifies that hypothesized difference is zero
+  var.equal = FALSE, # selects Welch's t-test
+  conf.level = 0.95
+)
+
+# Display the results
+test_result
+
+```
+# Answer:
+# Using hypothetical exam scores for 10 tutored and 10 non-tutored students, I tested whether the two groups have different population mean scores. The hypotheses were: 
+
+Ho : mu(tutoring) - mu(no_tutoring) equals 0.
+HA : mu(tutoring) - mu(no_tutoring) does not equal to 0.
+
+# I used a two-sided Welch two-sample t-test because the groups contain different students, the population standard deviations are unknown, and equal population variances are not assumed. The two-sided alternative enables a difference in either direction. I selected confidence level of 0.05. The test assumes independent observations and approximately normal population score distributions, particularly given the small samples. 
+
+# The tutoring group's mean was 85.0, compared with 75.6 for the no_tutoring group, a difference of 9.4 points. The test yielded t = 4.5484, df = 16.507, and p = 0.0003053. Since the p-value is below 0.05, I reject the null hypothesis and conclude that there is statistically significant evidence of a difference in population means. The 95% confidence interval for the difference is [5.03, 13.77] points.
+
+# Substantively, the tutoring group scored 9.4 points higher on average, a potentially meaningful difference on a 100-point exam. However, this comparison does not establish that tutoring caused higher scores because random assignment to tutoring was not specified.
+
+
+# standard errors: measure unit for uncertainty in the estimated difference
+# t-value: how much or many times your standard errors are away from zero
+# p-value: how unusual your results would be if the null hypothesis were true
+# null hypothesis : the claim you test against the data - which often has no difference (significance) and no association.
+# Rejecting the null hypothesis = your data provided enough evidence against the claim being tested = two groups have equal population mean exam scores
+===============================================================================================================
+
+
+
+
+# 2-(b)
+# use the same data, fit the linear model.
+# interpret the coefficient, standard error, t-value, and p-value.
+```{r}
+
+# Same data from (a)
+tutoring <- c(78, 85, 88, 90, 76, 84, 92, 81, 87, 89)
+no_tutoring <- c(72, 75, 80, 77, 69, 74, 82, 78, 73, 76)
+
+# Combine the scores and create the group indicator
+exam_data <- data.frame(
+  score = c(tutoring, no_tutoring),
+  tutoring = c(rep(1, 10), rep(0, 10))
+)
+
+# Fit the linear model
+model <- lm(score ~ tutoring, data = exam_data)
+
+# Display the regression results
+summary(model)
+
+```
+
+# Answer:
+# I fitted the linear model, where tutoring equals 1 for tutored students and 0 for non-tutored students. The intercept of 75.6 represents the mean score for non-tutored students. The tutoring coefficient of 9.4 indicates that tutored students scored 9.4 points higher on average. Its standard error of 2.067 measures the estimated sampling uncertainty of this difference. The t-value of 4.548 means the coefficient is 4.548 standard errors above the hypothesized value of zero. The p-value of 0.000249 is below the confidence level of 0.05, so I reject the null hypothesis that the tutoring coefficient equals to zero. Thus, tutoring status is statistically significantly associated with exam scores, although this does not establish causation without random assignment.
+
+# standard error = measures unit for uncertainty in the estimated difference.
+# t-value = how many times the standard errors are far from zero.
+# p-value = how unusual your results would be if the null hypothesis were true.
+# null hypothesis = the claim you test against the data - often which there is no difference (significance) and no association.
+# rejecting the null hypothesis = your estimate is significant enough
+
+===============================================================================================================
+
+
+
+
+# 2-(c)
+# conduct a permutation test for my hypothesis
+# plot the null distribution and mark the observed estimates on the plot
+# discuss the results: compare the permutation p-values with the p-values from 2-(a) and 2-(b).
+
+# Permutation test = checks whether your observed group difference is unusually large by repeatedly shuffling the group labels = is the difference compatible with ordinary variation under the null hypothesis, or is it surpisingly large? 
+
+```{r}
+
+## Same data from (a)
+tutoring <- c(78, 85, 88, 90, 76, 84, 92, 81, 87, 89)
+no_tutoring <- c(72, 75, 80, 77, 69, 74, 82, 78, 73, 76)
+
+## Combine the scores and create the group indicator
+exam_data <- data.frame(
+  score = c(tutoring, no_tutoring),
+  tutoring = c(rep(1, 10), rep(0, 10))
+)
+
+# =======================================================================================================
+
+## make the random shuffling reproducible
+set.seed(123)
+
+## calculate the observed difference in means
+observed_difference <- with(
+  exam_data, 
+  mean(score[tutoring == 1]) - mean(score[tutoring == 0])
+)
+
+## number of permutations (choose 10,000 shuffles + create 10,000 storage positions to store their results)
+B <- 10000
+## store the difference from each permutation
+permuted_differences <- numeric(B)
+
+
+## shuffle the labels and recalculate the difference
+for (b in seq_len(B)) {
+  
+  # shuffle the group labels without replacement (Not allowed: the same card twice within a single shuffle)
+  shuffled_labels <- sample(exam_data$tutoring)
+  
+  # calculate the difference using the shuffled labels 
+  permuted_differences[b] <-
+    mean(exam_data$score[shuffled_labels == 1]) - 
+    mean(exam_data$score[shuffled_labels == 0])
+}
+
+## Calculate the permutation p-value
+## Two-sided permutation p-value
+## add 1 to the numerator and denominator for Monte Carlo sampling
+permutation_p <- (
+  sum(abs(permuted_differences) >= abs(observed_difference)) + 1
+) / (B + 1)
+
+# print the observed difference annd permutation p-value
+observed_difference
+permutation_p
+
+# =============================================================================================================
+
+## Plot the null differences = Plot the shuffled differences
+hist(permuted_differences,
+     breaks = 40, 
+     main = "Permutation Null Distribution",
+     xlab = "Difference in mean scores (points)",
+     col = "lightblue",
+     border = "white",
+     xlim = range(c(permuted_differences,
+                    -abs(observed_difference),
+                    abs(observed_difference))))
+
+## Mark the observed statistic = mark the actual result
+abline(v = observed_difference,
+       col = "red", lwd = 2)
+
+## Mark the equally extreme difference in the opposite direction = mark the opposite-tail cutoff
+abline(v = -abs(observed_difference),
+       col = "red", lwd = 2, lty = 2)
+
+
+# permutation p-value counts results at / beyond these two lines
+legend("topright",
+       legend = c("Observed difference: + 9.4",
+                  "Opposite-tail cutoff: -9.4"),
+       col = "red",
+       lty = c(1, 2),
+       lwd = 2, 
+       bty = "n")
+
+
+```
+
+```{r}
+
+## Compare p-values from all three p-values
+c(
+  Welch_t_test = t.test(
+    score ~ tutoring, data = exam_data)$p.value,
+  
+  Linear_model = summary(
+    lm(score ~ tutoring, data = exam_data))$coefficients["tutoring", "Pr(>|t|)"],
+  
+  Permutation_test = permutation_p
+)
+
+```
+
+# Answer: I conducted a two-sided permutation test using the difference in mean exam scores as the test statistic. I shuffled the tutoring labels 10,000, while preserving the 10 students in each group. The plotted null distribution is centered near zero, whereas the observed difference of 9.4 points lies far in the right tail. The permutation p-value is approximately 0.000600, which is smaller than the confidence level of 0.05, so I reject the null hypothesis. 
+
+# In terms of comparing the three p-values, the permutation p-value seems slightly larger than the p-values from Welch's t-test (0.000305) and the linear model (0.000249). However, all three methods provide strong evidence against equal population means. The numerical difference reflect their different methods and assumptions, along with Monte Carlo variation in the permutation estimate. Overall, the tutored students scored higher on average, although these results alone do not establish causation.
+
