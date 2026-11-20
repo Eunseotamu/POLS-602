@@ -1,0 +1,433 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+# creating R markdown script: command + option + i
+
+# PROBLEM SET 3 : MULTIPLE LINEAR REGRESSION
+# PART 1: PAPER ANALYSIS
+
+# Assigned paper: Canes-Wrone, Brady, and Cogan's (2002) APSPR paper, "Out of Step, Out of Office: Electoral Accountability and House Members' Voting".
+
+# 1. Research Goals
+# Casual inference: investigates whether X causes a change in Y
+# Explanatory: why or how does it happen
+# Description: identifies or documents patterns without necessarily explaining their causes.
+# Prediction: uses available information to forecast an outcome.
+
+# Answer: As clearly articulated in the abstract and introduction, the primary goal of this paper is casual inference. This tend to true, specifically considering that the authors seek to examine whether greater support for political parties contributes to negative electoral consequences. This study has strengths in terms that it established a specific research question and relates it to the broader theoretical debate concerning democratic accountability. However, it also has potential weakness in a sense that the authors do not explicitly distinguish between identifying a causal effect and establishing a conditional association. More specifically, although the study incorporates several control variables, its observational research design makes it difficult to rule out all alternative explanations for the relationship between legislative voting and electoral performance. Overall, while the substantive objective is clearly indicated, the causal scope of the empirical investigation could have been articulated more precisely. 
+
+# ==============================================================================
+
+# 2. Estimands
+# Answer: The theoretical estimand of this paper concerns the causal effect of legislators' roll-call ideological extremity on their electoral performance, specifically their vote shares and probability of reelection. To empirically examine, the authors operate ideological extremity utilizing party-adjusted Americans for Democratic Action (ADA) scores and evaluate its relationship with incumbents' two-party vote shares via regression analysis. Moreover, this study clearly specify their dependent and independent variables, statistical models, and substantive interpretation of the estimated effects. Comprehensively, this study seem to offer a relatively evident definition of their empirical estimands. However, there are still rooms for improvements in this study too. Specifically, the theoretical estimand could be defined more explicitly in terms of the magnitude of the change in ideological extremity and the population of interest. Furthermore, the authors could more clearly distinguish their intended causal effects from the conditional associations estimated through their observational models. Additionally, the authors could also strengthen the connection between their theoretical and empirical estimands by specifying the causal contrasts, target populations, and assumptions necessary for causal interpretation.
+
+# ==============================================================================
+
+# 3. Identification Strategy
+# Identification: the way you connect your theoretical estimand to your empirical estimand.
+
+# Answer: In this study, the authors primarily employ regression analysis with statistical controls to identify the electoral consequences of legislator's ideological roll-call voting. More specifically, the authors control for potential confounding factors, including district ideology, challenger quality, campaign spending, and national political and economic conditions, to isolate the relationship between ideological extremity and electoral performance. In addition to that, they also execute robustness analyses across different elections and model specifications to examine the consistency of their findings. Moreover, the authors adopt an endogenous switching-regime model to address potential endogeneity associated with legislators' electoral safety when estimating reelection probabilities. 
+
+# ==============================================================================
+
+# 4. Assessment of Findings
+# Answer: Overall, this study provide convincing evidence of a systematic negative relationship between legislators' ideological roll-call extremity and their electoral performance. This study tend to be particularly notable, considering that the authors find consistent outcomes across multiple elections and model specifications while controlling for several important electoral determinants. However, regardless of these findings, the identification does not sufficiently justify a causal interpretation of the regression coefficients. In particular, the observational research design remains vulnerable to omitted variable bias and potential reverse causality, as unobserved district characteristics or anticipated electoral competition may simultaneously affect legislators' voting behavior and electoral consequences. Moreover, although the statistical models incorporate several important determinants of electoral performance, they may not fully capture the underlying data-generating process. For instance, challenger quality and campaign spending could be affected by legislators' voting behavior, making them potential mediators rather than purely independent control variables. 
+
+# Additionally, in terms of measurement validity, the study applies credible measures of electoral outcomes - including actual vote shares and reelection results. However, there is a possibility that ADA scores may not fully capture legislators' ideological positions, while presidential voting patterns may imperfectly represent district ideology. Despite the authors' effort to address some of these measurement concerns through alternative specifications, these restrictions remain relevant. Thus, this study could best conclude that it provides substantial evidence supporting an association between legislative voting and electoral performance, but its causal electoral accountability requires caution in terms of its interpretation.
+
+# ==============================================================================
+
+# 5. Broader Contribution
+# Answer: Despite its methodological limitations, this study still makes a significant contribution to our understanding of electoral accountability and legislative behavior. Specifically, the study provides empirical evidence that legislators' ideological roll-call voting is systematically associated with their subsequent electoral performance, suggesting that legislative decisions may carry electoral consequences. Furthermore, the finding that even relatively safe incumbents experience electoral disadvantages associated with ideological extremity challenges the assumption that incumbency advantages completely insulate legislators from electoral accountability. Additionally, the study establishes an empirical foundation for future research to investigate the casual mechanisms through which legislative voting influences electoral outcomes. Therefore, despite its restrictions in causal identification, this study advances our understanding of how electoral incentives may constrain legislators' political behavior and contribute to democratic representation.
+
+# ================================================================================================
+# ================================================================================================
+
+# PART 2: DATA ANALYSIS
+
+# Three import variables:
+# ft_police = Dependent Variable (DV): Respondents' feelings toward police (0-100)
+# ft_muslim = Independent Variable (IV): Respondents' feelings toward Muslims (0-100)
+# party_id = Grouping Variable : Respondents' political party identification
+
+# Question (a)
+# Load the data - Remove respondents with missing values (complete-case filtering on the two specified variables) - convert party_id into a factor 
+```{r}
+# Load the dataset
+data <- read.csv("thermometers_hw03.csv")
+
+
+# Keep respondents with non-missing values
+# for both police and muslim thermometers
+data <- data[!is.na(data$ft_police) &
+               !is.na(data$ft_muslim),]
+
+
+# Convert party_id into a factor
+data$party_id <- as.factor(data$party_id)
+# Set Democrat as the reference category
+data$party_id <- relevel(data$party_id, ref = "Democrat")
+
+
+# Verify the data preparation
+str(data)
+
+
+# Check the number of respondents retained
+nrow(data)
+# Check party categories and their frequencies
+table(data$party_id)
+# Confirm that neither thermometer contains missing values (NA)
+sum(is.na(data$ft_police))
+sum(is.na(data$ft_muslim))
+
+
+```
+
+# ==============================================================================
+
+# Question (b)
+# estimate a regression (ft_police (DV) and party_id(IV)) - intercept and the coefficient - calculate each party's average police thermometer score using the regression coefficients
+```{r}
+
+# Estimate the regression "ft_police (DV) and party_id (IV)"
+model_b <- lm(ft_police ~ party_id, data = data)
+# Display the regression results
+summary(model_b)
+
+
+# Recover the mean police thermometer score
+# for every political party from the model
+party_means_model <- predict(
+  model_b,
+  newdata = data.frame(
+    party_id = factor(
+      levels(data$party_id),
+      levels = levels(data$party_id)
+    )
+  )
+)
+
+
+# Display recovered party means
+names(party_means_model) <- levels(data$party_id)
+print(party_means_model)
+
+# Verify using the actual sample means
+aggregate(ft_police ~ party_id, data = data, FUN = mean)
+
+```
+
+# Answer: The OLS regression of "ft_police" on "party_id" is estimated using the Democrats as the reference category. According to regression outcome, the estimated intercept is 67.8306, representing the average police thermometer score among Democrats. The coefficients for independents, Not sure, Other, and Republicans are 6.0884, 3.4886, 4.2314, and 19.6063, respectively. These coefficients specifically indicate that Independents rate police approximately 6.09 points higher, respondents in the Not sure category rate police 3.49 point higher, respondents in the Other category rate police 4.23 points higher, and Republicans rate police 19.61 points higher, on average, compared to Democrats. The differences for Independents and Republicans are statistically significant at the 5% level, while those for Not sure and Other are not. As for the sample mean of "ft_police" for each party, it can be recovered from the estimated coefficients. The Democratic mean equals to the intercept (67.8306). In terms of the means for Independents, Not sure, Other and Republicans, they could be calculated by adding their respective coefficients to the intercept, yielding 73.9190, 71.3192, 72.0620, and 87.4369. Overall, these values match the actual sample means, demonstrating that a regression with party indicators reproduces each party's average police thermometer score. 
+
+
+# ==============================================================================
+
+# Question (c)
+# Estimate two models: the pooled regression of ft_police on ft_muslim, the regression of ft_police on ft_muslim and party_id
+
+# party fixed effects: control for differences between political parties so that the regression estimates the relationship between two variables within each party, rather than combining differences within and between parties = isolating to within party
+```{r}
+
+# Model 1: Pooled OLS regression
+model_pooled <- lm(ft_police ~ ft_muslim, data = data)
+summary(model_pooled)
+
+# Model 2: Party fixed effects regression
+model_fe <- lm(ft_police ~ ft_muslim + party_id, data = data)
+summary(model_fe)
+
+# Extract the coefficient on ft_muslim
+coef_pooled <- coef(model_pooled)["ft_muslim"]
+coef_fe <- coef(model_fe)["ft_muslim"]
+
+# Compare both coefficients
+results_compare <- data.frame(
+  Model = c("Pooled OLS", "Party Fixed Effects"),
+  Coefficient_ft_muslim = c(coef_pooled, coef_fe)
+)
+
+print(results_compare)
+
+# calculate the difference between coefficients
+coef_fe - coef_pooled
+
+```
+
+# Answer: Based on regression results, the pooled OLS regression produces a coefficient of -0.0851 on "ft_muslim", indicating that a one-point increase in the Muslim feeling thermometer is associated with a 0.0851-point decrease in the police feeling thermometer, on average. This relationship tend to statistically significant at the 5% level (p<0.001). However, after including party fixed effects, the coefficient increases to 0.0171, implying that a slightly positive association between the two thermometer ratings among respondents belonging to the same political party. This coefficient is not statistically significant (p = 0.1565). The coefficients differ because the pooled regression incorporates both within-party and between-party variation, whereas the party fixed effects model accounts for differences in average thermometer ratings across political parties and estimate the relationship utilizing only within-party variation. Overall, the shift from a negative to a slightly positive coefficient suggests that the negative association observed in the pooled regression is largely driven by between-party differences. Thus, the finding in this study suggests that controlling for party identification substantially changes the estimated relationship, although the party fixed effect models does not necessarily establish causality. 
+
+
+# ==============================================================================
+
+# Question (d)
+# obtain the same coefficient in (c) using demeaning
+## Demeaning: subtracting a group average from each observation = it allows people to examine how individuals differ from others within the same group, rather than comparing differences across groups = similar function of fixed effects
+
+# subtract each respondents' party mean from their observed ft_police and ft_muslim values = Demean ft_police and ft_muslim
+# regress the demeaned ft_police on the demeaned ft_muslim
+# calculate what proportion of the total variance in ft_muslim comes from within-party variation (not total variation)
+# explain whether fixed effects use within-party or total variation and what happens to between-party variation
+```{r}
+
+# Demean "ft_police" and "ft_muslim"
+data$police_dm <- data$ft_police - ave(data$ft_police, data$party_id, FUN = mean)
+data$muslim_dm <- data$ft_muslim - ave(data$ft_muslim, data$party_id, FUN = mean)
+
+# ===============================================================================
+
+# Regress demeaned police on demeaned Muslim
+model_demeaned <- lm(police_dm ~ muslim_dm, data = data)
+summary(model_demeaned)
+
+# ===============================================================================
+
+# Compare the demeaned slopes to the party fixed effects model
+slope_demeaned <- coef(model_demeaned)["muslim_dm"]
+slope_fe <- coef(model_fe)["ft_muslim"]
+
+cat("Demeaned regression slope:", slope_demeaned, "\n") # cat: combine text and values and display in console
+cat("Party fixed effects slope:", slope_fe, "\n")
+
+# Check whether the slopes are equal
+all.equal(unname(slope_demeaned), unname(slope_fe))
+
+# ==============================================================================
+
+# calculate the within-party variance share
+# calculate the total sum of squares
+SS_total <- sum((data$ft_muslim - mean(data$ft_muslim))^2)
+# calculate within-party sum of squares
+SS_within <- sum(data$muslim_dm^2)
+# calculate between-party sum of squares
+SS_between <- SS_total - SS_within
+
+# calculate the proportion of total variation
+within_share <- SS_within / SS_total
+between_share <- SS_between / SS_total
+
+# Display the results
+cat("Within-party share:", within_share, "\n")
+cat("Between-party share:", between_share, "\n")
+cat("Within-party percentage:", round(within_share * 100, 2), "%\n")
+
+
+
+```
+
+# Answer: After demeaning "ft_police" and "ft_muslim" by subtracting each respondents' respective party mean, the regression produced a coefficient of 0.0171 on the demeaned "ft_muslim". This coefficient is identical to the coefficient from the party fixed effects model. Together, this confirms that the within-group transformation (demeaning) produces the same estimated slope as the fixed effects regression. In addition, the variance decomposition shows that 83.76% of the total variation in "ft_muslim" occurs within political parties, while 16.33% represents between-party variation. These indicates that the fixed effects estimator solely uses the within-party variation to estimate the coefficient, and removes the between-party variation through demeaning and does not contribute to the estimated slope, as differences between party means are accounted for by party fixed effects. Consequently, the study concludes that the estimated coefficient reflects the within-party association between the two thermometer ratings.
+
+# ==============================================================================
+
+# Question (e)
+# estimate the pooled model, party fixed effects model, and neighborhood fixed effects model
+# extract the coefficients and standard errors of the three models
+# compare the three models
+```{r}
+
+# Ensure neighborhood is treated as a categorical variable
+data$neighborhood <- as.factor(data$neighborhood)
+
+# use the same complete-sample across all three models
+# require nonmissing party and neighborhood identifiers
+data_e <- subset(
+  data,
+  !is.na(party_id) & !is.na(neighborhood)
+)
+
+
+# Estimate the three regression models
+# Model 1: Pooled regression
+model_pooled_e <- lm(ft_police ~ ft_muslim, data = data_e)
+# Model 2: Party fixed effects
+model_party_e <- lm(ft_police ~ ft_muslim + party_id, data = data_e)
+# Model 3: Neighborhood fixed effects
+model_neighborhood_e <- lm(ft_police ~ ft_muslim + neighborhood, data = data_e)
+
+
+# Extract coefficients and standard errors
+get_results <- function(model) {
+  summary(model)$coefficients[
+    "ft_muslim", c("Estimate", "Std. Error")
+  ]
+}
+
+# compare the three models
+results_e <- rbind(
+  "Pooled OLS" = get_results(model_pooled_e),
+  "Party fixed effects" = get_results(model_party_e),
+  "Neighborhood fixed effects" = get_results(model_neighborhood_e)
+)
+
+print(round(results_e, 4))
+
+```
+
+# Answer: According to the analysis, the pooled regression produced a coefficient of -0.0851 on "ft_muslim", with a standard error of 0.0116. After including party fixed effects, the coefficient changed to 0.0171, with a standard error of 0.0121. Conversely, the neighborhood fixed effects model produced a coefficient of -0.0799, with a substantially larger standard error of 0.0296. Together, while including party fixed effects considerably change the estimated coefficient, neighborhood fixed effects seem to produce an estimate relatively close to the pooled regression but with substantially lower precision. As for the differences in standard errors, it can be explained by the variation available for estimating the coefficient. To elaborate, the pooled regression uses total variation in "ft_muslim", whereas the party fixed effects model uses only within-party variation, which accounts for 83.67% of the total variation as mentioned in Question (d). Likewise, the neighborhood fixed effects model uses only within-neighborhood variation. Thus, the larger standard error in the neighborhood fixed effects model can be accounted as a result of a greater reduction in available variation, although differences in residual variance and degrees of freedom may also contribute. Overall, these findings describe that including fixed effects can account for group-level differences, but may come at the cost of reduced statistical precision. 
+
+# ==============================================================================
+
+# Question (f)
+# estimate a party fixed effects model that additionally controls for education, race, and sex
+# compare the coefficient on ft_muslim with the original party fixed effects in (c)
+# explain the change or no change in the coefficient tells about the confounding
+```{r}
+
+# treat race and sex as categorical values
+data$race <- as.factor(data$race)
+data$sex <- as.factor(data$sex)
+
+# keep the same complete-sample for both models
+data_f <- data[complete.cases(
+  data[, c("ft_police", "ft_muslim",
+           "party_id", "educ", "race", "sex")]), ]
+
+
+
+# original party fixed effects model
+model_party_f <- lm(ft_police ~ ft_muslim + party_id, data = data_f)
+summary(model_party_f)
+
+# estimate a party fixed effects model adding education, race, sex
+# party fixed effect with additional controls
+model_controls_f <- lm(ft_police ~ ft_muslim + party_id + educ + race + sex, data = data_f)
+summary(model_controls_f)
+
+# ==========================================================================================
+
+# extract coefficients on ft_muslim
+coef_party <- coef(model_party_f)["ft_muslim"]
+coef_controls <- coef(model_controls_f)["ft_muslim"]
+
+# compare coefficients
+results_f <- data.frame(
+  Model = c("Party FE", "Party FE + Controls"),
+  Coefficient = c(coef_party, coef_controls)
+)
+print(results_f)
+
+# calculate the coefficient change
+coef_controls - coef_party
+
+```
+
+# Answer: By running the regression adding education, race, and sex as control variables to the party fixed effects model, the coefficient of "ft_muslim" increased from 0.0171 to 0.0435, indicating an increase of approximately 0.0264. Furthermore, the coefficient changes from statistically insignificant to statistically significant at the 1% level. This change suggests that party fixed effects alone cannot fully account for the associations involving education, race, and sex that affect the estimated relationship between "ft_muslim" and "ft_police". Specifically, although party fixed effects control for differences across political parties, it indicates that they do not necessarily account for individual-level characteristics that vary within the same party. Thus, the change in the coefficient seems to be consistent with remaining confounding associated with these characteristics, although it does not definitely establish that they are causal confounders. 
+
+# If the coefficient had remained unchanged, it would imply that controlling for education, race, and sex does not materially influence the estimated within-party relationship between the two thermometer ratings. However, this does not necessarily establish that party fixed effects eliminate all confounding or that the estimated coefficient can be interpreted causally, as other unobserved characteristics could still influence both variables. 
+
+# ==============================================================================
+
+# Question (g)
+# interaction terms
+# estimate a regression that allows the coefficient on ft_muslim to differ across political parties
+# calculate and report the slope for each party
+# conduct an F-test to determine whether the slopes are statistically different
+# compare the pooled, party fixed effects, and interaction models using R-squared and RMSE, and evaluate whether allowing different slopes meaningfully improves the model
+```{r}
+
+# estimate a regression that allows the coefficient on ft_muslim to differ across political parties
+# ensure party_id is a factor with Democrat as reference
+data$party_id <- relevel(
+  as.factor(data$party_id),
+  ref = "Democrat"
+)
+
+# use a common sample for all three models
+data_g <- data[!is.na(data$party_id),]
+
+# Model 1: Pooled regression
+model_pooled_g <- lm(ft_police ~ ft_muslim, data = data_g)
+summary(model_pooled_g)
+
+# Model 2: Party fixed effects 
+model_party_g <- lm(ft_police ~ ft_muslim + party_id, data = data_g)
+summary(model_party_g)
+
+# Model 3: Interaction model
+model_interaction <- lm(ft_police ~ ft_muslim * party_id, data = data_g)
+summary(model_interaction)
+
+# ========================================================
+
+# calculate and report the slope for each political party
+# Democrat slope = coefficient on ft_muslim
+# Republican slope = coefficient on ft_muslim + Republican interaction coefficient
+# Independent slope + coefficient on ft_muslim + Independent interaction coefficient
+
+# Get the party categories
+party_levels <- levels(data_g $party_id)
+
+# predict police thermometer scores at ft_muslim = 0 and 1
+newdata_0 <- data.frame(
+  ft_muslim = 0,
+  party_id = factor(party_levels, levels = party_levels)
+)
+
+newdata_1 <- data.frame(
+  ft_muslim = 1,
+  party_id = factor(party_levels, levels = party_levels)
+)
+
+# Difference in predictions = slope for each party
+party_slopes <- predict(model_interaction, newdata_1) - predict(model_interaction, newdata_0)
+
+# Display estimated slopes
+data.frame(Party = party_levels,
+           Slope = as.numeric(party_slopes))
+
+# =====================================================
+
+# F-test: Are the slopes identical across parties?
+anova(model_party_g, model_interaction)
+
+# ====================================================
+
+# Compare R-squared and RMSE across the three models
+# Function to calculate in-sample RMSE
+get_rmse <- function(model) {
+  sqrt(mean(residuals(model)^2))
+}
+
+# Create comparison table
+model_comparison <- data.frame(
+  Model = c(
+    "Pooled OLS",
+    "Party Fixed Effects",
+    "Interaction Model"),
+  R_squared = c(
+    summary(model_pooled_g)$r.squared,
+    summary(model_party_g)$r.squared,
+    summary(model_interaction)$r.squared),
+  RMSE = c(
+    get_rmse(model_pooled_g),
+    get_rmse(model_party_g),
+    get_rmse(model_interaction)))
+
+print(model_comparison)
+
+
+```
+
+# Answer: To examine whether the relationship between "ft_muslim" and "ft_police" differ across political parties, an interaction model including "ft_muslim", "party_id", and their interaction terms is estimated. The estimated slopes are 0.0521 for Democrats, -0.0244 for Independents, 0.3256 for respondents in the Not sure category, -0.1323 for Other, and 0.0406 for Republicans. These results describe that the association between the two thermometer ratings varies across political parties.
+
+# In addition, an F-test comparing the party fixed effects models with the interaction model is conducted to examine whether the slopes are statistically identical. The test produced an F-statistic of 4.876 and a p-value of 0.000636. Since the p-value is below 0.05, the null hypothesis that all party-specific slopes are equal is rejected, overall indicating that the common-slope restriction is not statistically supported.
+
+# In terms of model fit, the pooled regression has an R-squared of 0.01138 and an RMSE of 24.4420, while the party fixed effects model has an R-squared of 0.10260 and an RMSE of 23.2870. Moreover, the interaction model produced an R-squared of 0.10634 and an RMSE of 23.2385. Although the interaction model improves model fit relative to the party fixed effects model, the improvement is relatively small, with R-squared increasing by only 0.00374 and RMSE decreasing by approximately 0.0485.
+
+# Thus, although the F-test provides statistically significant evidence against the common-slope restriction, allowing the slopes to differ across parties produces only a marginal improvement in overall model fit. This suggests that the differences in party-specific slopes are statistically detectable but have restricted additional explanatory value for the model as a whole.
+
